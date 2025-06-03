@@ -1,0 +1,134 @@
+# Dart/Pub related
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+flutter_*.png
+.fvm/
+
+# Android
+android/.gradle/
+android/captures/
+android/app/build/
+*.iml
+*.apk
+*.aar
+*.jks
+*.keystore
+**/android/**/gradle-wrapper.jar
+**/android/.gradle
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.java
+
+# iOS
+ios/Pods/
+ios/Runner.xcworkspace/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/app.flx
+ios/Flutter/app.zip
+ios/Flutter/engine/
+ios/Flutter/flutter_assets/
+ios/Flutter/ephemeral/
+ios/.symlinks/
+ios/profile
+ios/Runner.build/
+ios/Runner.xcodeproj/project.xcworkspace/
+ios/Runner.xcodeproj/xcuserdata/
+ios/Runner.xcworkspace/xcuserdata/
+*.xcuserstate
+*.xcworkspace
+*.xcodeproj
+*.xcuserdatad
+**/ios/**/*.mode1v3
+**/ios/**/*.mode2v3
+**/ios/**/*.moved-aside
+**/ios/**/*.pbxuser
+**/ios/**/*.perspectivev3
+**/ios/**/*sync/
+**/ios/**/.sconsign.dblite
+**/ios/**/.tags*
+**/ios/**/.vagrant/
+**/ios/**/DerivedData/
+**/ios/**/Icon?
+**/ios/**/Pods/
+**/ios/**/.symlinks/
+**/ios/**/profile
+**/ios/**/xcuserdata
+**/ios/.generated/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Flutter/flutter_assets/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+
+# macOS
+macos/Flutter/ephemeral/
+macos/Flutter/GeneratedPluginRegistrant.swift
+macos/Pods/
+macos/build/
+macos/Runner.xcworkspace/
+macos/Runner.xcodeproj/project.xcworkspace/
+macos/Runner.xcodeproj/xcuserdata/
+macos/Runner.xcworkspace/xcuserdata/
+*.xcuserstate
+*.xcworkspace
+*.xcodeproj
+*.xcuserdatad
+
+# Windows
+windows/build/
+windows/runner/Debug/
+windows/runner/Release/
+windows/runner/Profile/
+windows/runner/GeneratedPluginRegistrant.*
+windows/flutter/ephemeral/
+
+# Linux
+linux/build/
+linux/flutter/ephemeral/
+*.swp
+
+# Web
+web/.dart_tool/
+web/build/
+
+# VS Code
+.vscode/
+.history/
+
+# IntelliJ/Android Studio
+.idea/
+*.iml
+
+# macOS system files
+.DS_Store
+
+# Misc
+*.log
+*.tmp
+*.class
+*.pyc
+*.temp
+
+# Environment files
+.env
+.env.*
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Coverage
+coverage/
