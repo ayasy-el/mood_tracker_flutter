@@ -1,6 +1,6 @@
 class Layout {
-  static final spacing = _Spacing();
-  static final borderRadius = _BorderRadius();
+  static const spacing = _Spacing();
+  static const borderRadius = _BorderRadius();
 }
 
 class _Spacing {

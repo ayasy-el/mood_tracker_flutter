@@ -17,7 +17,7 @@ class _MoodCheckInScreenState extends State<MoodCheckInScreen> {
   bool _showResults = false;
   String _activeTab = 'camera';
   MoodEntry? _currentMood;
-  bool _isProcessing = false;
+  final bool _isProcessing = false;
 
   // Mock user data
   final String _userName = "User";

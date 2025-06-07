@@ -160,7 +160,7 @@ class JournalScreen extends StatelessWidget {
                       ),
                     ),
                     const Spacer(),
-                    Icon(
+                    const Icon(
                       CupertinoIcons.chevron_forward,
                       size: 16,
                       color: AppColors.textSecondary,
@@ -192,6 +192,23 @@ class JournalScreen extends StatelessWidget {
 
     return CupertinoPageScaffold(
       backgroundColor: AppColors.background,
+      navigationBar: entries.isEmpty
+          ? null
+          : CupertinoNavigationBar(
+              backgroundColor:
+                  CupertinoColors.systemBackground.withOpacity(0.8),
+              trailing: CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: () {
+                  // TODO: Implement new entry creation
+                },
+                child: const Icon(
+                  CupertinoIcons.add,
+                  color: AppColors.primary,
+                  size: 28,
+                ),
+              ),
+            ),
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -205,23 +222,6 @@ class JournalScreen extends StatelessWidget {
           ],
         ),
       ),
-      navigationBar: entries.isEmpty
-          ? null
-          : CupertinoNavigationBar(
-              backgroundColor:
-                  CupertinoColors.systemBackground.withOpacity(0.8),
-              trailing: CupertinoButton(
-                padding: EdgeInsets.zero,
-                onPressed: () {
-                  // TODO: Implement new entry creation
-                },
-                child: Icon(
-                  CupertinoIcons.add,
-                  color: AppColors.primary,
-                  size: 28,
-                ),
-              ),
-            ),
     );
   }
 }

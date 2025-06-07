@@ -129,7 +129,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           Expanded(
             child: LineChart(
               LineChartData(
-                gridData: FlGridData(show: false),
+                gridData: const FlGridData(show: false),
                 titlesData: FlTitlesData(
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
@@ -147,10 +147,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       },
                     ),
                   ),
-                  rightTitles: AxisTitles(
+                  rightTitles: const AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
                   ),
-                  topTitles: AxisTitles(
+                  topTitles: const AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
                   ),
                   bottomTitles: AxisTitles(
@@ -391,9 +391,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         ),
                         const Spacer(),
                         Text(
-                          DateFormat('EEEE, MMM d').format(entry.timestamp) +
-                              '\n' +
-                              DateFormat('h:mm a').format(entry.timestamp),
+                          '${DateFormat('EEEE, MMM d').format(entry.timestamp)}\n${DateFormat('h:mm a').format(entry.timestamp)}',
                           textAlign: TextAlign.right,
                           style: GoogleFonts.poppins(
                             fontSize: 13,
@@ -548,11 +546,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   color: AppColors.primary.withOpacity(0.3),
                   shape: BoxShape.circle,
                 ),
-                selectedDecoration: BoxDecoration(
+                selectedDecoration: const BoxDecoration(
                   color: AppColors.primary,
                   shape: BoxShape.circle,
                 ),
-                markerDecoration: BoxDecoration(
+                markerDecoration: const BoxDecoration(
                   color: AppColors.primary,
                   shape: BoxShape.circle,
                 ),

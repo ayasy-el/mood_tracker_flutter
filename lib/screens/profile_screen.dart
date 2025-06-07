@@ -41,7 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: () {
               // TODO: Implement settings
             },
-            child: Icon(
+            child: const Icon(
               CupertinoIcons.settings,
               color: AppColors.textPrimary,
               size: 24,
@@ -215,7 +215,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Icon(
+                    const Icon(
                       CupertinoIcons.chevron_forward,
                       size: 16,
                       color: AppColors.textSecondary,
@@ -232,7 +232,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 trailing: CupertinoSwitch(
                   value: _darkMode,
                   onChanged: (value) => setState(() => _darkMode = value),
-                  activeColor: AppColors.primary,
+                  activeTrackColor: AppColors.primary,
                 ),
               ),
               _buildSettingItem(
@@ -241,7 +241,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 trailing: CupertinoSwitch(
                   value: _privateJournal,
                   onChanged: (value) => setState(() => _privateJournal = value),
-                  activeColor: AppColors.primary,
+                  activeTrackColor: AppColors.primary,
                 ),
                 isLast: true,
               ),
@@ -269,7 +269,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         decoration: BoxDecoration(
           border: !isLast
-              ? Border(
+              ? const Border(
                   bottom: BorderSide(
                     color: CupertinoColors.systemGrey4,
                     width: 0.5,
@@ -321,7 +321,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               CupertinoIcons.square_arrow_right,
               color: CupertinoColors.systemRed,
               size: 20,
