@@ -28,6 +28,7 @@ class _MoodDetectorState extends State<MoodDetector> {
     options: FaceDetectorOptions(
       enableClassification: true,
       enableLandmarks: true,
+      enableContours: true,
       enableTracking: true,
       performanceMode: FaceDetectorMode.accurate,
     ),
@@ -74,15 +75,69 @@ class _MoodDetectorState extends State<MoodDetector> {
     final double rightEyeOpen = face.rightEyeOpenProbability ?? 0.0;
     final double rotY = face.headEulerAngleY ?? 0.0; // Head rotation left-right
     final double rotX = face.headEulerAngleX ?? 0.0; // Head tilt up-down
+    final double rotZ = face.headEulerAngleZ ?? 0.0; // Head tilt sideways
 
-    // Check if eyes are closed (might indicate sadness or tiredness)
+    // Get facial contours for more detailed analysis
+    final leftEyebrowTop = face.contours[FaceContourType.leftEyebrowTop];
+    final rightEyebrowTop = face.contours[FaceContourType.rightEyebrowTop];
+    final leftEyebrowBottom = face.contours[FaceContourType.leftEyebrowBottom];
+    final rightEyebrowBottom =
+        face.contours[FaceContourType.rightEyebrowBottom];
+
+    // Calculate eyebrow angles if contours are available
+    double? leftEyebrowAngle;
+    double? rightEyebrowAngle;
+
+    if (leftEyebrowTop != null && leftEyebrowBottom != null) {
+      // Calculate average height difference between top and bottom contour points
+      double heightDiff = 0;
+      for (int i = 0; i < leftEyebrowTop.points.length; i++) {
+        heightDiff +=
+            (leftEyebrowTop.points[i].y - leftEyebrowBottom.points[i].y);
+      }
+      leftEyebrowAngle = heightDiff / leftEyebrowTop.points.length;
+    }
+
+    if (rightEyebrowTop != null && rightEyebrowBottom != null) {
+      // Calculate average height difference between top and bottom contour points
+      double heightDiff = 0;
+      for (int i = 0; i < rightEyebrowTop.points.length; i++) {
+        heightDiff +=
+            (rightEyebrowTop.points[i].y - rightEyebrowBottom.points[i].y);
+      }
+      rightEyebrowAngle = heightDiff / rightEyebrowTop.points.length;
+    }
+
+    // Check if eyes are closed (might indicate sadness or anger)
     bool eyesClosed = leftEyeOpen < 0.3 && rightEyeOpen < 0.3;
 
-    // Check head position (down might indicate sadness)
+    // Check head position
     bool headDown = rotX < -10;
+    bool headForward = rotY.abs() < 15; // Head facing forward
 
-    // Analyze the combination of features
-    if (smileProb > 0.8 && !eyesClosed) {
+    // Analyze facial features for anger
+    bool potentiallyAngry = false;
+    if (leftEyebrowAngle != null && rightEyebrowAngle != null) {
+      // Angry expression often has pronounced eyebrow angles
+      bool pronouncedEyebrows = leftEyebrowAngle > 10 && rightEyebrowAngle > 10;
+      // Angry people usually don't smile
+      bool notSmiling = smileProb < 0.2;
+      // Eyes might be slightly narrowed
+      bool eyesNarrowed =
+          leftEyeOpen < 0.7 && rightEyeOpen < 0.7 && !eyesClosed;
+      // Head usually facing forward in confrontational pose
+      bool confrontationalPose = headForward;
+
+      potentiallyAngry = pronouncedEyebrows &&
+          notSmiling &&
+          eyesNarrowed &&
+          confrontationalPose;
+    }
+
+    // Determine mood based on all features
+    if (potentiallyAngry) {
+      return MoodType.angry;
+    } else if (smileProb > 0.8 && !eyesClosed) {
       return MoodType.happy;
     } else if (smileProb < 0.2 && (eyesClosed || headDown)) {
       return MoodType.sad;
@@ -96,9 +151,50 @@ class _MoodDetectorState extends State<MoodDetector> {
     final double leftEyeOpen = face.leftEyeOpenProbability ?? 0.0;
     final double rightEyeOpen = face.rightEyeOpenProbability ?? 0.0;
 
-    // Calculate average of facial features for intensity
-    double intensity = (smileProb + leftEyeOpen + rightEyeOpen) / 3;
-    return (intensity * 10).round();
+    // Get eyebrow contours for anger intensity
+    final leftEyebrowTop = face.contours[FaceContourType.leftEyebrowTop];
+    final rightEyebrowTop = face.contours[FaceContourType.rightEyebrowTop];
+    final leftEyebrowBottom = face.contours[FaceContourType.leftEyebrowBottom];
+    final rightEyebrowBottom =
+        face.contours[FaceContourType.rightEyebrowBottom];
+
+    double eyebrowIntensity = 0.0;
+    if (leftEyebrowTop != null &&
+        leftEyebrowBottom != null &&
+        rightEyebrowTop != null &&
+        rightEyebrowBottom != null) {
+      // Calculate average height difference for both eyebrows
+      double leftHeightDiff = 0;
+      double rightHeightDiff = 0;
+
+      for (int i = 0; i < leftEyebrowTop.points.length; i++) {
+        leftHeightDiff +=
+            (leftEyebrowTop.points[i].y - leftEyebrowBottom.points[i].y);
+      }
+
+      for (int i = 0; i < rightEyebrowTop.points.length; i++) {
+        rightHeightDiff +=
+            (rightEyebrowTop.points[i].y - rightEyebrowBottom.points[i].y);
+      }
+
+      double avgLeftDiff = leftHeightDiff / leftEyebrowTop.points.length;
+      double avgRightDiff = rightHeightDiff / rightEyebrowTop.points.length;
+
+      // Normalize to 0-1 range (typical eyebrow height difference is 5-20 pixels)
+      eyebrowIntensity = ((avgLeftDiff + avgRightDiff) / 2) / 20.0;
+    }
+
+    // Calculate intensity based on the most prominent feature
+    double intensity;
+    if (face.contours[FaceContourType.leftEyebrowTop] != null) {
+      // If we have contours, use them for better intensity calculation
+      intensity = eyebrowIntensity;
+    } else {
+      // Fallback to basic features
+      intensity = (smileProb + leftEyeOpen + rightEyeOpen) / 3;
+    }
+
+    return (intensity * 10).round().clamp(1, 10);
   }
 
   Future<void> _detectMood() async {
@@ -111,13 +207,8 @@ class _MoodDetectorState extends State<MoodDetector> {
     setState(() => _isProcessing = true);
 
     try {
-      // Capture the image
       final image = await _controller!.takePicture();
-
-      // Convert the image to InputImage for ML Kit
       final inputImage = InputImage.fromFilePath(image.path);
-
-      // Process the image with ML Kit
       final faces = await _faceDetector.processImage(inputImage);
 
       if (faces.isEmpty) {
@@ -127,14 +218,10 @@ class _MoodDetectorState extends State<MoodDetector> {
         return;
       }
 
-      // Get the first detected face
       final face = faces.first;
-
-      // Analyze mood based on multiple facial features
       final mood = _analyzeMood(face);
       final intensity = _getMoodIntensity(face);
 
-      // Call the callback with detected mood
       widget.onMoodDetected(mood, intensity);
 
       // Debug information
@@ -145,6 +232,13 @@ class _MoodDetectorState extends State<MoodDetector> {
       debugPrint('Head Rotation Y: ${face.headEulerAngleY}');
       debugPrint('Head Rotation X: ${face.headEulerAngleX}');
       debugPrint('Head Rotation Z: ${face.headEulerAngleZ}');
+
+      // Print contour information if available
+      face.contours.forEach((type, contour) {
+        if (contour != null) {
+          debugPrint('Contour $type: ${contour.points.length} points');
+        }
+      });
     } catch (e) {
       debugPrint('Error detecting mood: $e');
       ScaffoldMessenger.of(context).showSnackBar(
