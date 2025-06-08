@@ -1,35 +1,15 @@
-import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:mood_tracker_flutter/constants/colors.dart';
 import 'package:mood_tracker_flutter/constants/layout.dart';
-import 'package:mood_tracker_flutter/models/mood.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mood_tracker_flutter/utils/emotion_classifier.dart';
-
-MoodType mapClassNameToMood(String className) {
-  switch (className.toLowerCase()) {
-    case 'angry':
-      return MoodType.angry;
-    case 'disgust':
-      return MoodType.angry; // Disgust digabung dengan angry
-    case 'fear':
-      return MoodType.anxious; // Fear digabung dengan anxious
-    case 'happy':
-      return MoodType.happy;
-    case 'sad':
-      return MoodType.sad;
-    case 'surprise':
-      return MoodType.excited; // Surprise digabung dengan excited
-    case 'neutral':
-      return MoodType.neutral;
-    default:
-      return MoodType.neutral; // Fallback jika tidak cocok
-  }
-}
+import 'package:mood_tracker_flutter/utils/ollama_service.dart';
 
 class MoodDetector extends StatefulWidget {
-  final Function(MoodType mood, int intensity) onMoodDetected;
+  final Function(String mood, int intensity, Uint8List imageBytes)
+      onMoodDetected;
 
   const MoodDetector({
     super.key,
@@ -88,18 +68,79 @@ class _MoodDetectorState extends State<MoodDetector> {
 
     try {
       final image = await _controller!.takePicture();
-      final file = File(image.path);
+      final bytes = await image.readAsBytes();
 
-      EmotionClassifier emotionClassifier = EmotionClassifier();
-      final (className, confidence) = await emotionClassifier.classify(file);
+      final result = await OllamaService.analyzeMoodFromImage(bytes);
 
-      final mood = mapClassNameToMood(className);
-      final intensity = (confidence * 10).round().clamp(1, 10);
+      widget.onMoodDetected(
+        result['mood'] as String,
+        result['intensity'] as int,
+        bytes,
+      );
 
-      widget.onMoodDetected(mood, intensity);
+      if (mounted) {
+        showCupertinoDialog(
+          context: context,
+          builder: (context) => CupertinoAlertDialog(
+            title: Text(
+              'Mood Detection Result',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            content: Column(
+              children: [
+                // Text(
+                //   result['explanation'] as String,
+                //   style: GoogleFonts.poppins(),
+                // ),
+                SizedBox(height: Layout.spacing.m),
+                Text(
+                  'Detected feelings: ${(result['feelings'] as List).join(", ")}',
+                  style: GoogleFonts.poppins(),
+                ),
+              ],
+            ),
+            actions: [
+              CupertinoDialogAction(
+                child: Text(
+                  'OK',
+                  style: GoogleFonts.poppins(),
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      }
     } catch (e) {
       debugPrint('Error detecting mood: $e');
-      // You might want to show an error message to the user here
+      if (mounted) {
+        showCupertinoDialog(
+          context: context,
+          builder: (context) => CupertinoAlertDialog(
+            title: Text(
+              'Error',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            content: Text(
+              'Failed to detect mood. Please try again or enter manually.',
+              style: GoogleFonts.poppins(),
+            ),
+            actions: [
+              CupertinoDialogAction(
+                child: Text(
+                  'OK',
+                  style: GoogleFonts.poppins(),
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isProcessing = false);
@@ -116,22 +157,55 @@ class _MoodDetectorState extends State<MoodDetector> {
   @override
   Widget build(BuildContext context) {
     if (!_isInitialized) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CupertinoActivityIndicator());
     }
 
     return Column(
       children: [
         Expanded(
-          child: Container(
-            margin: EdgeInsets.all(Layout.spacing.l),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(Layout.borderRadius.large),
-              border: Border.all(color: AppColors.primary, width: 2),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(Layout.borderRadius.large),
-              child: CameraPreview(_controller!),
-            ),
+          child: Stack(
+            children: [
+              Container(
+                margin: EdgeInsets.all(Layout.spacing.l),
+                decoration: BoxDecoration(
+                  borderRadius:
+                      BorderRadius.circular(Layout.borderRadius.large),
+                  border: Border.all(color: AppColors.primary, width: 2),
+                ),
+                child: ClipRRect(
+                  borderRadius:
+                      BorderRadius.circular(Layout.borderRadius.large),
+                  child: CameraPreview(_controller!),
+                ),
+              ),
+              if (_isProcessing)
+                Positioned.fill(
+                  child: Container(
+                    margin: EdgeInsets.all(Layout.spacing.l),
+                    decoration: BoxDecoration(
+                      color: CupertinoColors.black.withOpacity(0.5),
+                      borderRadius:
+                          BorderRadius.circular(Layout.borderRadius.large),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const CupertinoActivityIndicator(
+                          color: CupertinoColors.white,
+                        ),
+                        SizedBox(height: Layout.spacing.m),
+                        Text(
+                          'Analyzing mood...',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            color: CupertinoColors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
         Padding(
@@ -146,35 +220,34 @@ class _MoodDetectorState extends State<MoodDetector> {
                 ),
               ),
               SizedBox(height: Layout.spacing.l),
-              ElevatedButton(
+              CupertinoButton(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(Layout.borderRadius.large),
                 onPressed: _isProcessing ? null : _detectMood,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: Layout.spacing.xl,
-                    vertical: Layout.spacing.m,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(Layout.borderRadius.medium),
-                  ),
-                ),
                 child: _isProcessing
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
+                    ? Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const CupertinoActivityIndicator(
+                            color: CupertinoColors.white,
+                          ),
+                          SizedBox(width: Layout.spacing.s),
+                          Text(
+                            'Processing...',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: CupertinoColors.white,
+                            ),
+                          ),
+                        ],
                       )
                     : Text(
                         'Detect Mood',
                         style: GoogleFonts.poppins(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
-                          color: Colors.white,
+                          color: CupertinoColors.white,
                         ),
                       ),
               ),

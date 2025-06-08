@@ -1,13 +1,14 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 class AppColors {
-  static const Color primary = Color(0xFF6200EE);
+  static const Color primary = CupertinoColors.activeBlue;
   static const Color background = Color(0xFFF5F5F5);
-  static const Color card = Color(0xFFFFFFFF);
-  static const Color textPrimary = Color(0xFF1D1D1D);
-  static const Color textSecondary = Color(0xFF757575);
-  static const Color border = Color(0xFFE0E0E0);
-  static const Color error = Color(0xFFB00020);
+  static const Color textPrimary = CupertinoColors.black;
+  static const Color textSecondary = CupertinoColors.systemGrey;
+  static const Color error = CupertinoColors.destructiveRed;
+  static const Color success = CupertinoColors.activeGreen;
+  static const Color warning = CupertinoColors.systemYellow;
+  static const Color info = CupertinoColors.activeBlue;
 
   // Mood colors
   static const Color happy = Color(0xFF4CAF50);
@@ -21,19 +22,42 @@ class AppColors {
   static Color getMoodColor(String mood) {
     switch (mood.toLowerCase()) {
       case 'happy':
-        return happy;
+        return CupertinoColors.systemYellow;
       case 'sad':
-        return sad;
+        return CupertinoColors.systemBlue;
       case 'angry':
-        return angry;
-      case 'neutral':
-        return neutral;
-      case 'excited':
-        return excited;
-      case 'calm':
-        return calm;
+        return CupertinoColors.systemRed;
       case 'anxious':
-        return anxious;
+        return CupertinoColors.systemPurple;
+      case 'calm':
+        return CupertinoColors.systemGreen;
+      case 'excited':
+        return CupertinoColors.systemOrange;
+      case 'tired':
+        return CupertinoColors.systemGrey;
+      case 'neutral':
+        return CupertinoColors.systemGrey;
+      default:
+        return primary;
+    }
+  }
+
+  static Color getEmotionColor(String? emotion) {
+    if (emotion == null) return primary;
+
+    switch (emotion.toLowerCase()) {
+      case 'senang':
+        return CupertinoColors.systemYellow;
+      case 'sedih':
+        return CupertinoColors.systemBlue;
+      case 'marah':
+        return CupertinoColors.systemRed;
+      case 'takut':
+        return CupertinoColors.systemPurple;
+      case 'jijik':
+        return CupertinoColors.systemGreen;
+      case 'terkejut':
+        return CupertinoColors.systemOrange;
       default:
         return primary;
     }

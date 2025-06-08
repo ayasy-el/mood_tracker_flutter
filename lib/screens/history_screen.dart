@@ -1,14 +1,15 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' show Material, Colors;
+import 'package:google_fonts/google_fonts.dart';
 import 'package:mood_tracker_flutter/constants/colors.dart';
 import 'package:mood_tracker_flutter/constants/layout.dart';
 import 'package:mood_tracker_flutter/utils/mock_data.dart';
 import 'package:mood_tracker_flutter/utils/string_extensions.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:mood_tracker_flutter/models/mood.dart';
+import 'package:mood_tracker_flutter/screens/journal_entry_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -19,10 +20,78 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   String _activeTab = 'analytics';
-  final _moodHistory = generateMockMoodHistory();
-  final _moodStats = getMockMoodStats();
-  DateTime _selectedDay = DateTime.now();
-  DateTime _focusedDay = DateTime.now();
+  List<MoodEntry> _entries = [];
+  List<MoodEntry> _filteredEntries = [];
+  DateTime _selectedDate = DateTime.now();
+  Map<DateTime, List<MoodEntry>> _entriesByDate = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEntries();
+  }
+
+  void _loadEntries() {
+    setState(() {
+      _entries = generateMockEntries();
+      _filterEntries();
+      _organizeEntriesByDate();
+    });
+  }
+
+  void _organizeEntriesByDate() {
+    _entriesByDate = {};
+    for (var entry in _entries) {
+      final date = DateTime(
+        entry.timestamp.year,
+        entry.timestamp.month,
+        entry.timestamp.day,
+      );
+      if (!_entriesByDate.containsKey(date)) {
+        _entriesByDate[date] = [];
+      }
+      _entriesByDate[date]!.add(entry);
+    }
+  }
+
+  void _filterEntries() {
+    if (_activeTab == 'calendar') {
+      setState(() {
+        _filteredEntries = _entries.where((entry) {
+          return entry.timestamp.year == _selectedDate.year &&
+              entry.timestamp.month == _selectedDate.month &&
+              entry.timestamp.day == _selectedDate.day;
+        }).toList();
+      });
+    } else {
+      setState(() {
+        _filteredEntries = List.from(_entries);
+      });
+    }
+  }
+
+  IconData getMoodIcon(String mood) {
+    switch (mood.toLowerCase()) {
+      case 'happy':
+        return CupertinoIcons.smiley;
+      case 'sad':
+        return CupertinoIcons.smiley_fill;
+      case 'angry':
+        return CupertinoIcons.exclamationmark_circle_fill;
+      case 'anxious':
+        return CupertinoIcons.exclamationmark_circle;
+      case 'calm':
+        return CupertinoIcons.smiley;
+      case 'excited':
+        return CupertinoIcons.star;
+      case 'tired':
+        return CupertinoIcons.moon_fill;
+      case 'neutral':
+        return CupertinoIcons.smiley;
+      default:
+        return CupertinoIcons.smiley;
+    }
+  }
 
   Widget _buildHeader() {
     return Padding(
@@ -55,64 +124,90 @@ class _HistoryScreenState extends State<HistoryScreen> {
             setState(() => _activeTab = value);
           }
         },
-        backgroundColor: CupertinoColors.white,
-        thumbColor: CupertinoColors.white,
+        backgroundColor: CupertinoColors.systemBackground,
         children: {
-          'analytics':
-              _buildTabItem('Analytics', CupertinoIcons.chart_bar_alt_fill),
-          'calendar': _buildTabItem('Calendar', CupertinoIcons.calendar),
+          'analytics': Container(
+            padding: EdgeInsets.symmetric(vertical: Layout.spacing.m),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  CupertinoIcons.chart_bar_alt_fill,
+                  size: 18,
+                  color: _activeTab == 'analytics'
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
+                ),
+                SizedBox(width: Layout.spacing.s),
+                Text(
+                  'Analytics',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: _activeTab == 'analytics'
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          'calendar': Container(
+            padding: EdgeInsets.symmetric(vertical: Layout.spacing.m),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  CupertinoIcons.calendar,
+                  size: 18,
+                  color: _activeTab == 'calendar'
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
+                ),
+                SizedBox(width: Layout.spacing.s),
+                Text(
+                  'Calendar',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: _activeTab == 'calendar'
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
         },
       ),
     );
   }
 
-  Widget _buildTabItem(String label, IconData icon) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: Layout.spacing.m,
-        vertical: Layout.spacing.s,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 18,
-            color: _activeTab == label.toLowerCase()
-                ? AppColors.primary
-                : AppColors.textSecondary,
-          ),
-          SizedBox(width: Layout.spacing.s),
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: _activeTab == label.toLowerCase()
-                  ? AppColors.primary
-                  : AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildMoodTrend() {
+    final moodData = _entries.map((e) => e).toList();
 
-  Widget _buildMoodTrendChart() {
+    if (moodData.isEmpty) {
+      return Center(
+        child: Text(
+          'No mood data available',
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      );
+    }
+
+    final spots = moodData.asMap().entries.map((entry) {
+      return FlSpot(entry.key.toDouble(), entry.value.intensity.toDouble());
+    }).toList();
+
     return Container(
-      height: 200,
-      margin: EdgeInsets.all(Layout.spacing.l),
+      margin: EdgeInsets.symmetric(horizontal: Layout.spacing.l),
       padding: EdgeInsets.all(Layout.spacing.l),
       decoration: BoxDecoration(
         color: CupertinoColors.systemBackground,
         borderRadius: BorderRadius.circular(Layout.borderRadius.large),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.systemGrey.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -125,8 +220,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
               color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 8),
-          Expanded(
+          SizedBox(height: Layout.spacing.m),
+          SizedBox(
+            height: 200,
             child: LineChart(
               LineChartData(
                 gridData: FlGridData(show: false),
@@ -135,17 +231,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     sideTitles: SideTitles(
                       showTitles: true,
                       interval: 2,
-                      reservedSize: 28,
-                      getTitlesWidget: (value, meta) {
-                        return Text(
-                          value.toInt().toString(),
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        );
-                      },
+                      reservedSize: 30,
                     ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
                   ),
                   rightTitles: AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
@@ -153,56 +243,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   topTitles: AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
                   ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 1,
-                      reservedSize: 22,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index >= 0 && index < _moodHistory.length) {
-                          return Text(
-                            DateFormat('E')
-                                .format(_moodHistory[index].timestamp),
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                            ),
-                          );
-                        }
-                        return const Text('');
-                      },
-                    ),
-                  ),
                 ),
                 borderData: FlBorderData(show: false),
                 minX: 0,
-                maxX: _moodHistory.length - 1.0,
+                maxX: (spots.length - 1).toDouble(),
                 minY: 0,
                 maxY: 10,
                 lineBarsData: [
                   LineChartBarData(
-                    spots: List.generate(_moodHistory.length, (index) {
-                      return FlSpot(
-                        index.toDouble(),
-                        _moodHistory[index].intensity.toDouble(),
-                      );
-                    }),
+                    spots: spots,
                     isCurved: true,
                     color: AppColors.primary,
-                    barWidth: 2,
+                    barWidth: 3,
                     isStrokeCapRound: true,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, barData, index) {
-                        return FlDotCirclePainter(
-                          radius: 4,
-                          color: AppColors.primary,
-                          strokeWidth: 2,
-                          strokeColor: CupertinoColors.white,
-                        );
-                      },
-                    ),
+                    dotData: FlDotData(show: true),
                     belowBarData: BarAreaData(
                       show: true,
                       color: AppColors.primary.withOpacity(0.1),
@@ -212,79 +266,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCards() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: Layout.spacing.l),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                  child: _buildStatCard('Total\nCheck-ins',
-                      _moodStats['totalEntries'].toString())),
-              SizedBox(width: Layout.spacing.m),
-              Expanded(
-                  child: _buildStatCard(
-                      'Day\nStreak', _moodStats['streakDays'].toString())),
-              SizedBox(width: Layout.spacing.m),
-              Expanded(
-                  child: _buildStatCard('Avg\nIntensity',
-                      _moodStats['averageIntensity'].toString())),
-            ],
-          ),
           SizedBox(height: Layout.spacing.m),
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(Layout.spacing.l),
-            decoration: BoxDecoration(
-              color: CupertinoColors.systemBackground,
-              borderRadius: BorderRadius.circular(Layout.borderRadius.medium),
-              boxShadow: [
-                BoxShadow(
-                  color: CupertinoColors.systemGrey.withOpacity(0.1),
-                  blurRadius: 3,
-                  offset: const Offset(0, 1),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Most Frequent Mood',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                SizedBox(height: Layout.spacing.s),
-                Row(
-                  children: [
-                    Icon(
-                      CupertinoIcons.smiley,
-                      color: AppColors.getMoodColor(
-                          _moodStats['mostFrequentMood']),
-                      size: 24,
-                    ),
-                    SizedBox(width: Layout.spacing.s),
-                    Text(
-                      _moodStats['mostFrequentMood'].toString().capitalize(),
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.getMoodColor(
-                            _moodStats['mostFrequentMood']),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+          Text(
+            'Mood intensity (1-10)',
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              color: AppColors.textSecondary,
             ),
           ),
         ],
@@ -292,409 +279,400 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildStatCard(String label, String value) {
+  Widget _buildMoodStats() {
+    final moodData = _entries.map((e) => e).toList();
+
+    if (moodData.isEmpty) return const SizedBox.shrink();
+
+    final avgIntensity =
+        moodData.map((e) => e.intensity).reduce((a, b) => a + b) /
+            moodData.length;
+
+    final moodFrequency = <String, int>{};
+    for (final mood in moodData) {
+      moodFrequency[mood.mood] = (moodFrequency[mood.mood] ?? 0) + 1;
+    }
+
+    final mostFrequentMood =
+        moodFrequency.entries.reduce((a, b) => a.value > b.value ? a : b).key;
+
     return Container(
-      padding: EdgeInsets.all(Layout.spacing.m),
+      margin: EdgeInsets.symmetric(horizontal: Layout.spacing.l),
+      padding: EdgeInsets.all(Layout.spacing.l),
       decoration: BoxDecoration(
         color: CupertinoColors.systemBackground,
-        borderRadius: BorderRadius.circular(Layout.borderRadius.medium),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.systemGrey.withOpacity(0.1),
-            blurRadius: 3,
-            offset: const Offset(0, 1),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(Layout.borderRadius.large),
       ),
-      child: Column(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primary,
-            ),
-          ),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-              height: 1.2,
-            ),
+          _buildStatItem('Total\nCheck-ins', moodData.length.toString()),
+          _buildStatItem('Day\nStreak', '7'),
+          _buildStatItem(
+            'Avg\nIntensity',
+            avgIntensity.toStringAsFixed(1),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMoodEntries() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: EdgeInsets.all(Layout.spacing.l),
-          child: Text(
-            'Recent Mood Entries',
+  Widget _buildMostFrequentMood() {
+    final moodData = _entries.map((e) => e).toList();
+
+    if (moodData.isEmpty) return const SizedBox.shrink();
+
+    final moodFrequency = <String, int>{};
+    for (final mood in moodData) {
+      moodFrequency[mood.mood] = (moodFrequency[mood.mood] ?? 0) + 1;
+    }
+
+    final mostFrequentMood =
+        moodFrequency.entries.reduce((a, b) => a.value > b.value ? a : b).key;
+
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: Layout.spacing.l),
+      padding: EdgeInsets.all(Layout.spacing.l),
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemBackground,
+        borderRadius: BorderRadius.circular(Layout.borderRadius.large),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Most Frequent Mood',
             style: GoogleFonts.poppins(
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
           ),
-        ),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _moodHistory.length,
-          padding: EdgeInsets.symmetric(horizontal: Layout.spacing.l),
-          itemBuilder: (context, index) {
-            final entry = _moodHistory[index];
-            final moodColor = AppColors.getMoodColor(
-              entry.mood.toString().split('.').last,
-            );
-
-            return Container(
-              margin: EdgeInsets.only(bottom: Layout.spacing.m),
-              decoration: BoxDecoration(
-                color: CupertinoColors.white,
-                borderRadius: BorderRadius.circular(Layout.borderRadius.large),
-                boxShadow: [
-                  BoxShadow(
-                    color: CupertinoColors.systemGrey.withOpacity(0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(Layout.spacing.l),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          CupertinoIcons.smiley,
-                          color: moodColor,
-                          size: 20,
-                        ),
-                        SizedBox(width: Layout.spacing.s),
-                        Text(
-                          entry.mood.toString().split('.').last.capitalize(),
-                          style: GoogleFonts.poppins(
-                            fontSize: 15,
-                            color: moodColor,
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          DateFormat('EEEE, MMM d').format(entry.timestamp) +
-                              '\n' +
-                              DateFormat('h:mm a').format(entry.timestamp),
-                          textAlign: TextAlign.right,
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: Layout.spacing.m),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: LinearProgressIndicator(
-                        value: entry.intensity / 10,
-                        backgroundColor: moodColor.withOpacity(0.1),
-                        valueColor: AlwaysStoppedAnimation<Color>(moodColor),
-                        minHeight: 3,
-                      ),
-                    ),
-                    SizedBox(height: Layout.spacing.s),
-                    Text(
-                      'Intensity: ${entry.intensity}/10',
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    if (entry.note != null) ...[
-                      SizedBox(height: Layout.spacing.m),
-                      Text(
-                        entry.note!,
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                    if (entry.note != null) ...[
-                      SizedBox(height: Layout.spacing.m),
-                      Wrap(
-                        spacing: Layout.spacing.s,
-                        children: [
-                          'family',
-                          'relaxation',
-                          'work',
-                          'stress',
-                        ]
-                            .where((tag) =>
-                                entry.note!.toLowerCase().contains(tag))
-                            .map((tag) => Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: Layout.spacing.m,
-                                    vertical: Layout.spacing.xs,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: CupertinoColors.systemGrey6,
-                                    borderRadius: BorderRadius.circular(
-                                        Layout.borderRadius.small),
-                                  ),
-                                  child: Text(
-                                    tag,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ))
-                            .toList(),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAnalytics() {
-    return CustomScrollView(
-      slivers: [
-        CupertinoSliverRefreshControl(
-          onRefresh: () async {
-            // TODO: Implement refresh
-            await Future.delayed(const Duration(seconds: 1));
-          },
-        ),
-        SliverToBoxAdapter(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          SizedBox(height: Layout.spacing.m),
+          Row(
             children: [
-              _buildMoodTrendChart(),
-              _buildStatCards(),
-              _buildMoodEntries(),
-              SizedBox(height: Layout.spacing.l),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCalendar() {
-    final today = DateTime.now();
-    final firstDay = DateTime(today.year, today.month - 3, today.day);
-    final lastDay = DateTime(today.year, today.month + 3, today.day);
-
-    // Filter entries for selected day
-    final selectedDayEntries = _moodHistory
-        .where((entry) =>
-            entry.timestamp.year == _selectedDay.year &&
-            entry.timestamp.month == _selectedDay.month &&
-            entry.timestamp.day == _selectedDay.day)
-        .toList();
-
-    return Material(
-      color: AppColors.background,
-      child: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: Layout.spacing.l),
-            child: TableCalendar(
-              firstDay: firstDay,
-              lastDay: lastDay,
-              focusedDay: _focusedDay,
-              selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-              onDaySelected: (selectedDay, focusedDay) {
-                setState(() {
-                  _selectedDay = selectedDay;
-                  _focusedDay = focusedDay;
-                });
-              },
-              calendarFormat: CalendarFormat.month,
-              startingDayOfWeek: StartingDayOfWeek.monday,
-              headerStyle: HeaderStyle(
-                formatButtonVisible: false,
-                titleCentered: true,
-                titleTextStyle: GoogleFonts.poppins(
+              Icon(
+                getMoodIcon(mostFrequentMood),
+                color: AppColors.getMoodColor(mostFrequentMood),
+                size: 24,
+              ),
+              SizedBox(width: Layout.spacing.m),
+              Text(
+                mostFrequentMood.capitalize(),
+                style: GoogleFonts.poppins(
                   fontSize: 16,
-                  fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                 ),
               ),
-              calendarStyle: CalendarStyle(
-                outsideDaysVisible: false,
-                weekendTextStyle:
-                    GoogleFonts.poppins(color: AppColors.textSecondary),
-                defaultTextStyle: GoogleFonts.poppins(),
-                todayDecoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.3),
-                  shape: BoxShape.circle,
-                ),
-                selectedDecoration: BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                ),
-                markerDecoration: BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                ),
-                markersMaxCount: 1,
-              ),
-              eventLoader: (day) {
-                return _moodHistory
-                    .where((entry) =>
-                        entry.timestamp.year == day.year &&
-                        entry.timestamp.month == day.month &&
-                        entry.timestamp.day == day.day)
-                    .toList();
-              },
-            ),
+            ],
           ),
-          SizedBox(height: Layout.spacing.m),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMoodEntryCard(MoodEntry entry) {
+    final moodColor = AppColors.getMoodColor(entry.mood);
+
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      onPressed: () {
+        Navigator.push(
+          context,
+          CupertinoPageRoute(
+            builder: (context) => JournalEntryScreen(existingEntry: entry),
+          ),
+        );
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: Layout.spacing.m),
+        decoration: BoxDecoration(
+          color: CupertinoColors.systemBackground,
+          borderRadius: BorderRadius.circular(Layout.borderRadius.large),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: EdgeInsets.all(Layout.spacing.l),
+              child: Row(
+                children: [
+                  Icon(
+                    getMoodIcon(entry.mood),
+                    color: moodColor,
+                    size: 24,
+                  ),
+                  SizedBox(width: Layout.spacing.m),
+                  Text(
+                    entry.mood.toUpperCase(),
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    DateFormat('EEEE, MMM d').format(entry.timestamp),
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              height: 4,
+              margin: EdgeInsets.symmetric(horizontal: Layout.spacing.l),
+              decoration: BoxDecoration(
+                color: moodColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(Layout.borderRadius.small),
+              ),
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: entry.intensity / 10,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: moodColor,
+                    borderRadius:
+                        BorderRadius.circular(Layout.borderRadius.small),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(Layout.spacing.l),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Intensity: ${entry.intensity}/10',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  if (entry.content.isNotEmpty) ...[
+                    SizedBox(height: Layout.spacing.m),
+                    Text(
+                      entry.content,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  if (entry.feelings.isNotEmpty) ...[
+                    SizedBox(height: Layout.spacing.m),
+                    Wrap(
+                      spacing: Layout.spacing.s,
+                      children: entry.feelings.map((feeling) {
+                        return Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: Layout.spacing.m,
+                            vertical: Layout.spacing.xs,
+                          ),
+                          decoration: BoxDecoration(
+                            color: moodColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(
+                                Layout.borderRadius.small),
+                          ),
+                          child: Text(
+                            feeling,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: moodColor,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                  if (entry.tags.isNotEmpty) ...[
+                    SizedBox(height: Layout.spacing.m),
+                    Wrap(
+                      spacing: Layout.spacing.s,
+                      children: entry.tags.map((tag) {
+                        return Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: Layout.spacing.m,
+                            vertical: Layout.spacing.xs,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.textSecondary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(
+                                Layout.borderRadius.small),
+                          ),
+                          child: Text(
+                            '#$tag',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
+            color: AppColors.primary,
+          ),
+        ),
+        SizedBox(height: Layout.spacing.xs),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.poppins(
+            fontSize: 12,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCalendarView() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: Layout.spacing.l),
-            child: Row(
-              children: [
-                Text(
-                  DateFormat('MMMM d, y').format(_selectedDay),
-                  style: GoogleFonts.poppins(
+            padding: EdgeInsets.fromLTRB(
+                Layout.spacing.l, Layout.spacing.l, Layout.spacing.l, 0),
+            child: Material(
+              color: Colors.transparent,
+              child: TableCalendar<MoodEntry>(
+                firstDay: DateTime.utc(2024, 1, 1),
+                lastDay: DateTime.utc(2025, 12, 31),
+                focusedDay: _selectedDate,
+                currentDay: DateTime.now(),
+                selectedDayPredicate: (day) => isSameDay(_selectedDate, day),
+                eventLoader: (day) =>
+                    _entriesByDate[DateTime(
+                      day.year,
+                      day.month,
+                      day.day,
+                    )] ??
+                    [],
+                onDaySelected: (selectedDay, focusedDay) {
+                  setState(() {
+                    _selectedDate = selectedDay;
+                    _filterEntries();
+                  });
+                },
+                calendarFormat: CalendarFormat.month,
+                startingDayOfWeek: StartingDayOfWeek.monday,
+                availableCalendarFormats: const {
+                  CalendarFormat.month: 'Month',
+                },
+                calendarStyle: CalendarStyle(
+                  selectedDecoration: BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  todayDecoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  markerDecoration: BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  markersMaxCount: 1,
+                  canMarkersOverflow: false,
+                  markerSize: 6,
+                  markerMargin: const EdgeInsets.only(top: 4),
+                  cellMargin: const EdgeInsets.all(4),
+                  cellPadding: const EdgeInsets.all(0),
+                ),
+                headerStyle: HeaderStyle(
+                  titleTextStyle: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
                   ),
+                  formatButtonVisible: false,
+                  leftChevronIcon: Icon(
+                    CupertinoIcons.chevron_left,
+                    color: AppColors.textPrimary,
+                    size: 20,
+                  ),
+                  rightChevronIcon: Icon(
+                    CupertinoIcons.chevron_right,
+                    color: AppColors.textPrimary,
+                    size: 20,
+                  ),
+                  titleCentered: true,
+                  headerPadding: const EdgeInsets.symmetric(vertical: 8),
+                  headerMargin: const EdgeInsets.all(0),
                 ),
-                const Spacer(),
-                Text(
-                  '${selectedDayEntries.length} entries',
+                daysOfWeekStyle: DaysOfWeekStyle(
+                  weekdayStyle: GoogleFonts.poppins(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                  weekendStyle: GoogleFonts.poppins(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+                Layout.spacing.l, Layout.spacing.l, Layout.spacing.l, 0),
+            child: Text(
+              DateFormat('MMMM d, yyyy').format(_selectedDate),
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          if (_filteredEntries.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.fromLTRB(Layout.spacing.l, Layout.spacing.m,
+                  Layout.spacing.l, Layout.spacing.l),
+              child: Column(
+                children: _filteredEntries
+                    .map((entry) => _buildMoodEntryCard(entry))
+                    .toList(),
+              ),
+            )
+          else
+            Padding(
+              padding: EdgeInsets.fromLTRB(Layout.spacing.l, Layout.spacing.xl,
+                  Layout.spacing.l, Layout.spacing.l),
+              child: Center(
+                child: Text(
+                  'No entries for this date',
                   style: GoogleFonts.poppins(
-                    fontSize: 14,
+                    fontSize: 16,
                     color: AppColors.textSecondary,
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-          SizedBox(height: Layout.spacing.m),
-          Expanded(
-            child: selectedDayEntries.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          CupertinoIcons.calendar,
-                          size: 48,
-                          color: AppColors.textSecondary.withOpacity(0.5),
-                        ),
-                        SizedBox(height: Layout.spacing.m),
-                        Text(
-                          'No entries for this day',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: EdgeInsets.all(Layout.spacing.l),
-                    itemCount: selectedDayEntries.length,
-                    itemBuilder: (context, index) {
-                      final entry = selectedDayEntries[index];
-                      final moodColor = AppColors.getMoodColor(
-                        entry.mood.toString().split('.').last,
-                      );
-
-                      return Container(
-                        margin: EdgeInsets.only(bottom: Layout.spacing.m),
-                        padding: EdgeInsets.all(Layout.spacing.m),
-                        decoration: BoxDecoration(
-                          color: CupertinoColors.white,
-                          borderRadius:
-                              BorderRadius.circular(Layout.borderRadius.medium),
-                          border: Border.all(
-                            color: CupertinoColors.systemGrey5,
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(Layout.spacing.s),
-                              decoration: BoxDecoration(
-                                color: moodColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(
-                                    Layout.borderRadius.small),
-                              ),
-                              child: Icon(
-                                CupertinoIcons.smiley,
-                                color: moodColor,
-                                size: 24,
-                              ),
-                            ),
-                            SizedBox(width: Layout.spacing.m),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    entry.mood
-                                        .toString()
-                                        .split('.')
-                                        .last
-                                        .capitalize(),
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                  if (entry.note != null)
-                                    Text(
-                                      entry.note!,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 14,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(width: Layout.spacing.m),
-                            Text(
-                              DateFormat('h:mm a').format(entry.timestamp),
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-          ),
         ],
       ),
     );
@@ -710,11 +688,47 @@ class _HistoryScreenState extends State<HistoryScreen> {
           children: [
             _buildHeader(),
             _buildTabs(),
-            SizedBox(height: Layout.spacing.l),
             Expanded(
               child: _activeTab == 'analytics'
-                  ? _buildAnalytics()
-                  : _buildCalendar(),
+                  ? SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: Layout.spacing.l),
+                          _buildMoodTrend(),
+                          SizedBox(height: Layout.spacing.l),
+                          _buildMoodStats(),
+                          SizedBox(height: Layout.spacing.l),
+                          _buildMostFrequentMood(),
+                          Padding(
+                            padding: EdgeInsets.all(Layout.spacing.l),
+                            child: Text(
+                              'Recent Mood Entries',
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: Layout.spacing.l,
+                            ),
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: _entries.length,
+                              itemBuilder: (context, index) {
+                                final entry = _entries[index];
+                                return _buildMoodEntryCard(entry);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _buildCalendarView(),
             ),
           ],
         ),
