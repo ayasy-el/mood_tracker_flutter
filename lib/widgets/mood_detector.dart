@@ -1,9 +1,32 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:mood_tracker_flutter/constants/colors.dart';
 import 'package:mood_tracker_flutter/constants/layout.dart';
 import 'package:mood_tracker_flutter/models/mood.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mood_tracker_flutter/utils/emotion_classifier.dart';
+
+MoodType mapClassNameToMood(String className) {
+  switch (className.toLowerCase()) {
+    case 'angry':
+      return MoodType.angry;
+    case 'disgust':
+      return MoodType.angry; // Disgust digabung dengan angry
+    case 'fear':
+      return MoodType.anxious; // Fear digabung dengan anxious
+    case 'happy':
+      return MoodType.happy;
+    case 'sad':
+      return MoodType.sad;
+    case 'surprise':
+      return MoodType.excited; // Surprise digabung dengan excited
+    case 'neutral':
+      return MoodType.neutral;
+    default:
+      return MoodType.neutral; // Fallback jika tidak cocok
+  }
+}
 
 class MoodDetector extends StatefulWidget {
   final Function(MoodType mood, int intensity) onMoodDetected;
@@ -65,13 +88,18 @@ class _MoodDetectorState extends State<MoodDetector> {
 
     try {
       final image = await _controller!.takePicture();
+      final file = File(image.path);
 
-      // TODO: Implement actual mood detection using ML
-      // For now, we'll just return a mock result
-      await Future.delayed(const Duration(seconds: 2));
-      widget.onMoodDetected(MoodType.happy, 8);
+      EmotionClassifier emotionClassifier = EmotionClassifier();
+      final (className, confidence) = await emotionClassifier.classify(file);
+
+      final mood = mapClassNameToMood(className);
+      final intensity = (confidence * 10).round().clamp(1, 10);
+
+      widget.onMoodDetected(mood, intensity);
     } catch (e) {
-      debugPrint('Error capturing image: $e');
+      debugPrint('Error detecting mood: $e');
+      // You might want to show an error message to the user here
     } finally {
       if (mounted) {
         setState(() => _isProcessing = false);

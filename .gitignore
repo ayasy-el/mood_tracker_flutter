@@ -6,6 +6,9 @@
 build/
 flutter_*.png
 .fvm/
+.flutter-plugins
+.flutter-plugins-dependencies
+.flutter-plugins-dependencies.json
 
 # Android
 android/.gradle/
