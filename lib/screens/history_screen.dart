@@ -112,7 +112,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Widget _buildTabs() {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: Layout.spacing.l),
+      width: double.infinity,
+      margin: EdgeInsets.symmetric(
+          horizontal: Layout.spacing.l, vertical: Layout.spacing.s),
       decoration: BoxDecoration(
         color: CupertinoColors.systemBackground,
         borderRadius: BorderRadius.circular(Layout.borderRadius.large),

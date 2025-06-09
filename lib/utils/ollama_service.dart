@@ -61,71 +61,71 @@ Berikan hanya respons JSON tanpa penjelasan tambahan.
     }
   }
 
-  static Future<Map<String, dynamic>> analyzeMoodFromImage(
-      Uint8List imageBytes) async {
-    try {
-      // Validate image bytes
-      if (imageBytes.isEmpty) {
-        throw Exception('Image data is empty');
-      }
+//   static Future<Map<String, dynamic>> analyzeMoodFromImage(
+//       Uint8List imageBytes) async {
+//     try {
+//       // Validate image bytes
+//       if (imageBytes.isEmpty) {
+//         throw Exception('Image data is empty');
+//       }
 
-      // Log image size
-      debugPrint('Image size: ${imageBytes.length / 1024} KB');
+//       // Log image size
+//       debugPrint('Image size: ${imageBytes.length / 1024} KB');
 
-      // Convert to base64
-      final base64Image = base64Encode(imageBytes);
-      debugPrint('Base64 image length: ${base64Image.length}');
+//       // Convert to base64
+//       final base64Image = base64Encode(imageBytes);
+//       debugPrint('Base64 image length: ${base64Image.length}');
 
-      const prompt = '''
-{
-"mood": "pilih salah satu dari: Happy, Sad, Angry, Neutral, Calm, Excited, Anxious, Tired",
-"feelings": ["maksimal 3 feeling deskriptif, opsional"],
-"intensity": 1-10,
-"tags": ["maksimal 3 tag dari daftar"],
-"explanation": "penjelasan ringkas tentang bagaimana mood dan feelings dideteksi dari teks"
-}
+//       const prompt = '''
+// {
+// "mood": "pilih salah satu dari: Happy, Sad, Angry, Neutral, Calm, Excited, Anxious, Tired",
+// "feelings": ["maksimal 3 feeling deskriptif, opsional"],
+// "intensity": 1-10,
+// "tags": ["maksimal 3 tag dari daftar"],
+// "explanation": "penjelasan ringkas tentang bagaimana mood dan feelings dideteksi dari teks"
+// }
 
-Contoh Feeling:
-'Grateful', 'Loved', 'Lonely','Disappointed', 'Hopeless', 'Frustrated', 'Annoyed', 'Indifferent', 'Peaceful', 'Relaxed', 'Enthusiastic', 'Energetic', 'Stressed',
-'Worried', Overwhelmed', 'Nervous','Sleepy', 'Fatigued', Burned out'
+// Contoh Feeling:
+// 'Grateful', 'Loved', 'Lonely','Disappointed', 'Hopeless', 'Frustrated', 'Annoyed', 'Indifferent', 'Peaceful', 'Relaxed', 'Enthusiastic', 'Energetic', 'Stressed',
+// 'Worried', Overwhelmed', 'Nervous','Sleepy', 'Fatigued', Burned out'
 
-Tags yang tersedia:
-["work", "stress", "relax", "family", "love", "health", "study", "friendship", "travel", "achievement", "disappointment", "anxiety", "excitement", "fatigue", "motivation", "creativity", "social", "personal", "professional", "emotional"]
+// Tags yang tersedia:
+// ["work", "stress", "relax", "family", "love", "health", "study", "friendship", "travel", "achievement", "disappointment", "anxiety", "excitement", "fatigue", "motivation", "creativity", "social", "personal", "professional", "emotional"]
 
-Mood tidak boleh Mixed, hanya boleh salah satu dari yang tersedia (Happy, Sad, Angry, Neutral, Calm, Excited, Anxious, Tired).
-Berikan hanya respons JSON tanpa penjelasan tambahan.
-''';
+// Mood tidak boleh Mixed, hanya boleh salah satu dari yang tersedia (Happy, Sad, Angry, Neutral, Calm, Excited, Anxious, Tired).
+// Berikan hanya respons JSON tanpa penjelasan tambahan.
+// ''';
 
-      final requestBody = {
-        'model': 'gemma3:4b',
-        'prompt': prompt,
-        'images': [base64Image],
-        'stream': false,
-      };
+//       final requestBody = {
+//         'model': 'gemma3:4b',
+//         'prompt': prompt,
+//         'images': [base64Image],
+//         'stream': false,
+//       };
 
-      debugPrint('Sending request to Ollama...');
-      final response = await http.post(
-        Uri.parse('$_baseUrl/generate'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(requestBody),
-      );
+//       debugPrint('Sending request to Ollama...');
+//       final response = await http.post(
+//         Uri.parse('$_baseUrl/generate'),
+//         headers: {'Content-Type': 'application/json'},
+//         body: jsonEncode(requestBody),
+//       );
 
-      debugPrint('Response status code: ${response.statusCode}');
-      debugPrint('Response body: ${response.body}');
+//       debugPrint('Response status code: ${response.statusCode}');
+//       debugPrint('Response body: ${response.body}');
 
-      if (response.statusCode == 200) {
-        final jsonResponse = jsonDecode(response.body);
-        final cleanJson = _extractJsonFromMarkdown(jsonResponse['response']);
-        final jsonResult = jsonDecode(cleanJson);
-        return jsonResult;
-      }
+//       if (response.statusCode == 200) {
+//         final jsonResponse = jsonDecode(response.body);
+//         final cleanJson = _extractJsonFromMarkdown(jsonResponse['response']);
+//         final jsonResult = jsonDecode(cleanJson);
+//         return jsonResult;
+//       }
 
-      throw Exception(
-          'Failed to analyze image: ${response.statusCode} - ${response.body}');
-    } catch (e, stackTrace) {
-      debugPrint('Error analyzing image: $e');
-      debugPrint('Stack trace: $stackTrace');
-      throw Exception('Error analyzing image: $e');
-    }
-  }
+//       throw Exception(
+//           'Failed to analyze image: ${response.statusCode} - ${response.body}');
+//     } catch (e, stackTrace) {
+//       debugPrint('Error analyzing image: $e');
+//       debugPrint('Stack trace: $stackTrace');
+//       throw Exception('Error analyzing image: $e');
+//     }
+//   }
 }

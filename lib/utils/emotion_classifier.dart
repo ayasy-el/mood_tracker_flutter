@@ -106,4 +106,25 @@ class EmotionClassifier {
     }
     return (classNames[predictedIndex], confidence);
   }
+
+  String mapClassNameToMood(String className) {
+    switch (className) {
+      case "Happy":
+        return "Happy";
+      case "Sad":
+        return "Sad";
+      case "Angry":
+        return "Angry";
+      case "Neutral":
+        return "Neutral";
+      case "Disgust":
+        return "Angry";
+      case "Fear":
+        return "Anxious";
+      case "Surprise":
+        return "Excited";
+      default:
+        return "Neutral";
+    }
+  }
 }

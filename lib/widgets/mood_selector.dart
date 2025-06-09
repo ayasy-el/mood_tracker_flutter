@@ -39,8 +39,8 @@ class _MoodSelectorState extends State<MoodSelector> {
   void initState() {
     super.initState();
     _selectedMood = widget.initialMood;
-    _selectedFeelings = widget.initialFeelings ?? [];
-    _selectedTags = widget.initialTags ?? [];
+    _selectedFeelings = List<String>.from(widget.initialFeelings ?? []);
+    _selectedTags = List<String>.from(widget.initialTags ?? []);
     _intensity = widget.initialIntensity ?? 5;
   }
 
@@ -64,7 +64,8 @@ class _MoodSelectorState extends State<MoodSelector> {
       setState(() {
         if (!_selectedFeelings.contains(feeling) &&
             _selectedFeelings.length < 3) {
-          _selectedFeelings.add(feeling);
+          _selectedFeelings = List<String>.from(_selectedFeelings)
+            ..add(feeling);
           _feelingsController.clear();
         }
       });
@@ -73,7 +74,7 @@ class _MoodSelectorState extends State<MoodSelector> {
 
   void _removeFeeling(String feeling) {
     setState(() {
-      _selectedFeelings.remove(feeling);
+      _selectedFeelings = List<String>.from(_selectedFeelings)..remove(feeling);
     });
   }
 
@@ -82,7 +83,7 @@ class _MoodSelectorState extends State<MoodSelector> {
     if (tag.isNotEmpty) {
       setState(() {
         if (!_selectedTags.contains(tag) && _selectedTags.length < 3) {
-          _selectedTags.add(tag);
+          _selectedTags = List<String>.from(_selectedTags)..add(tag);
           _tagsController.clear();
         }
       });
@@ -91,7 +92,7 @@ class _MoodSelectorState extends State<MoodSelector> {
 
   void _removeTag(String tag) {
     setState(() {
-      _selectedTags.remove(tag);
+      _selectedTags = List<String>.from(_selectedTags)..remove(tag);
     });
   }
 
@@ -249,37 +250,42 @@ class _MoodSelectorState extends State<MoodSelector> {
         Wrap(
           spacing: Layout.spacing.s,
           runSpacing: Layout.spacing.s,
-          children: MoodConstants.availableFeelings.map((feeling) {
-            return CupertinoButton(
-              padding: EdgeInsets.zero,
-              onPressed: () {
-                if (!_selectedFeelings.contains(feeling) &&
-                    _selectedFeelings.length < 3) {
-                  setState(() {
-                    _selectedFeelings.add(feeling);
-                  });
-                }
-              },
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: Layout.spacing.m,
-                  vertical: Layout.spacing.xs,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.textSecondary.withOpacity(0.1),
-                  borderRadius:
-                      BorderRadius.circular(Layout.borderRadius.small),
-                ),
-                child: Text(
-                  feeling,
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
+          children: _selectedMood != null
+              ? List<String>.from(MoodConstants.getMoodFeelings(_selectedMood!))
+                  .map((feeling) {
+                  return CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: () {
+                      if (!_selectedFeelings.contains(feeling) &&
+                          _selectedFeelings.length < 3) {
+                        setState(() {
+                          _selectedFeelings =
+                              List<String>.from(_selectedFeelings)
+                                ..add(feeling);
+                        });
+                      }
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: Layout.spacing.m,
+                        vertical: Layout.spacing.xs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.textSecondary.withOpacity(0.1),
+                        borderRadius:
+                            BorderRadius.circular(Layout.borderRadius.small),
+                      ),
+                      child: Text(
+                        feeling,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList()
+              : [],
         ),
       ],
     );
@@ -381,13 +387,13 @@ class _MoodSelectorState extends State<MoodSelector> {
         Wrap(
           spacing: Layout.spacing.s,
           runSpacing: Layout.spacing.s,
-          children: MoodConstants.availableTags.map((tag) {
+          children: List<String>.from(MoodConstants.availableTags).map((tag) {
             return CupertinoButton(
               padding: EdgeInsets.zero,
               onPressed: () {
                 if (!_selectedTags.contains(tag) && _selectedTags.length < 3) {
                   setState(() {
-                    _selectedTags.add(tag);
+                    _selectedTags = List<String>.from(_selectedTags)..add(tag);
                   });
                 }
               },

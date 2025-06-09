@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -5,7 +6,8 @@ import 'package:camera/camera.dart';
 import 'package:mood_tracker_flutter/constants/colors.dart';
 import 'package:mood_tracker_flutter/constants/layout.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mood_tracker_flutter/utils/ollama_service.dart';
+import 'package:mood_tracker_flutter/utils/emotion_classifier.dart';
+import 'package:path_provider/path_provider.dart';
 
 class MoodDetector extends StatefulWidget {
   final Function(String mood, int intensity, Uint8List imageBytes)
@@ -24,6 +26,7 @@ class _MoodDetectorState extends State<MoodDetector> {
   CameraController? _controller;
   bool _isInitialized = false;
   bool _isProcessing = false;
+  final EmotionClassifier _emotionClassifier = EmotionClassifier();
 
   @override
   void initState() {
@@ -67,16 +70,26 @@ class _MoodDetectorState extends State<MoodDetector> {
     setState(() => _isProcessing = true);
 
     try {
+      // Take picture and save to temporary file
       final image = await _controller!.takePicture();
       final bytes = await image.readAsBytes();
 
-      final result = await OllamaService.analyzeMoodFromImage(bytes);
+      // Create a temporary file for the classifier
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/temp_image.jpg');
+      await tempFile.writeAsBytes(bytes);
 
-      widget.onMoodDetected(
-        result['mood'] as String,
-        result['intensity'] as int,
-        bytes,
-      );
+      // Classify emotion
+      final (className, confidence) =
+          await _emotionClassifier.classify(tempFile);
+      final mood = _emotionClassifier.mapClassNameToMood(className);
+      final intensity = (confidence * 10).round().clamp(1, 10);
+
+      // Delete temporary file
+      await tempFile.delete();
+
+      // Call the callback with results
+      widget.onMoodDetected(mood, intensity, bytes);
 
       if (mounted) {
         showCupertinoDialog(
@@ -90,13 +103,8 @@ class _MoodDetectorState extends State<MoodDetector> {
             ),
             content: Column(
               children: [
-                // Text(
-                //   result['explanation'] as String,
-                //   style: GoogleFonts.poppins(),
-                // ),
-                SizedBox(height: Layout.spacing.m),
                 Text(
-                  'Detected feelings: ${(result['feelings'] as List).join(", ")}',
+                  'Detected Mood: $mood\nConfidence: ${(confidence * 100).round()}%',
                   style: GoogleFonts.poppins(),
                 ),
               ],
