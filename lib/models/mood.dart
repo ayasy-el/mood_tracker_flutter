@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:mood_tracker_flutter/constants/moods.dart';
 
 class MoodEntry extends Equatable {
+  final String? id;
   final String content;
   final DateTime timestamp;
   final String mood;
@@ -10,6 +11,7 @@ class MoodEntry extends Equatable {
   final List<String> tags;
 
   const MoodEntry({
+    this.id,
     required this.content,
     required this.timestamp,
     required this.mood,
@@ -27,6 +29,7 @@ class MoodEntry extends Equatable {
 
   factory MoodEntry.fromJson(Map<String, dynamic> json) {
     final entry = MoodEntry(
+      id: json['id'] as String?,
       content: json['content'] as String,
       timestamp: DateTime.parse(json['timestamp'] as String),
       mood: json['mood'] as String,
@@ -40,6 +43,7 @@ class MoodEntry extends Equatable {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'content': content,
       'timestamp': timestamp.toIso8601String(),
       'mood': mood,
@@ -51,6 +55,7 @@ class MoodEntry extends Equatable {
 
   @override
   List<Object?> get props => [
+        id,
         content,
         timestamp,
         mood,
@@ -60,6 +65,7 @@ class MoodEntry extends Equatable {
       ];
 
   MoodEntry copyWith({
+    String? id,
     String? content,
     DateTime? timestamp,
     String? mood,
@@ -68,6 +74,7 @@ class MoodEntry extends Equatable {
     List<String>? tags,
   }) {
     final entry = MoodEntry(
+      id: id ?? this.id,
       content: content ?? this.content,
       timestamp: timestamp ?? this.timestamp,
       mood: mood ?? this.mood,

@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class OllamaService {
-  static const String _baseUrl = 'http://localhost:11434/api';
+  static const String _baseUrl = 'http://100.125.79.117:3000/api';
 
   static String _extractJsonFromMarkdown(String markdown) {
     final RegExp jsonRegex = RegExp(r'```json\s*(.*?)\s*```', dotAll: true);

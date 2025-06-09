@@ -10,6 +10,15 @@ flutter_*.png
 .flutter-plugins-dependencies
 .flutter-plugins-dependencies.json
 
+#Firebase related
+firebase_options.Dart
+firebase.json
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+.flutter-plugins
+.flutter-plugins-dependencies
+
 # Android
 android/.gradle/
 android/captures/

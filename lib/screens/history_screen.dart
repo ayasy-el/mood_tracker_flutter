@@ -3,13 +3,14 @@ import 'package:flutter/material.dart' show Material, Colors;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mood_tracker_flutter/constants/colors.dart';
 import 'package:mood_tracker_flutter/constants/layout.dart';
-import 'package:mood_tracker_flutter/utils/mock_data.dart';
 import 'package:mood_tracker_flutter/utils/string_extensions.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:mood_tracker_flutter/models/mood.dart';
 import 'package:mood_tracker_flutter/screens/journal_entry_screen.dart';
+import 'package:mood_tracker_flutter/providers/firebase_provider.dart';
+import 'package:provider/provider.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -20,54 +21,36 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   String _activeTab = 'analytics';
-  List<MoodEntry> _entries = [];
-  List<MoodEntry> _filteredEntries = [];
   DateTime _selectedDate = DateTime.now();
   Map<DateTime, List<MoodEntry>> _entriesByDate = {};
 
-  @override
-  void initState() {
-    super.initState();
-    _loadEntries();
+  List<MoodEntry> _filterEntries(List<MoodEntry> entries) {
+    if (_activeTab == 'calendar') {
+      return entries.where((entry) {
+        return entry.timestamp.year == _selectedDate.year &&
+            entry.timestamp.month == _selectedDate.month &&
+            entry.timestamp.day == _selectedDate.day;
+      }).toList();
+    } else {
+      return List.from(entries);
+    }
   }
 
-  void _loadEntries() {
-    setState(() {
-      _entries = generateMockEntries();
-      _filterEntries();
-      _organizeEntriesByDate();
-    });
-  }
-
-  void _organizeEntriesByDate() {
-    _entriesByDate = {};
-    for (var entry in _entries) {
+  Map<DateTime, List<MoodEntry>> _organizeEntriesByDate(
+      List<MoodEntry> entries) {
+    final map = <DateTime, List<MoodEntry>>{};
+    for (var entry in entries) {
       final date = DateTime(
         entry.timestamp.year,
         entry.timestamp.month,
         entry.timestamp.day,
       );
-      if (!_entriesByDate.containsKey(date)) {
-        _entriesByDate[date] = [];
+      if (!map.containsKey(date)) {
+        map[date] = [];
       }
-      _entriesByDate[date]!.add(entry);
+      map[date]!.add(entry);
     }
-  }
-
-  void _filterEntries() {
-    if (_activeTab == 'calendar') {
-      setState(() {
-        _filteredEntries = _entries.where((entry) {
-          return entry.timestamp.year == _selectedDate.year &&
-              entry.timestamp.month == _selectedDate.month &&
-              entry.timestamp.day == _selectedDate.day;
-        }).toList();
-      });
-    } else {
-      setState(() {
-        _filteredEntries = List.from(_entries);
-      });
-    }
+    return map;
   }
 
   IconData getMoodIcon(String mood) {
@@ -186,7 +169,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildMoodTrend() {
-    final moodData = _entries.map((e) => e).toList();
+    final moodData = _entriesByDate.values.expand((e) => e).toList()
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
     if (moodData.isEmpty) {
       return Center(
@@ -200,8 +184,41 @@ class _HistoryScreenState extends State<HistoryScreen> {
       );
     }
 
-    final spots = moodData.asMap().entries.map((entry) {
-      return FlSpot(entry.key.toDouble(), entry.value.intensity.toDouble());
+    // Get last 7 days of data
+    final last7Days = moodData.where((entry) {
+      final now = DateTime.now();
+      final difference = now.difference(entry.timestamp).inDays;
+      return difference <= 7;
+    }).toList();
+
+    // Calculate mood score based on mood type and intensity
+    double getMoodScore(MoodEntry entry) {
+      final baseScore = entry.intensity.toDouble();
+      switch (entry.mood.toLowerCase()) {
+        case 'happy':
+          return baseScore * 1.5;
+        case 'excited':
+          return baseScore * 1.3;
+        case 'calm':
+          return baseScore * 1.2;
+        case 'neutral':
+          return baseScore;
+        case 'tired':
+          return baseScore * 0.8;
+        case 'anxious':
+          return baseScore * 0.6;
+        case 'sad':
+          return baseScore * 0.5;
+        case 'angry':
+          return baseScore * 0.4;
+        default:
+          return baseScore;
+      }
+    }
+
+    final spots = last7Days.asMap().entries.map((entry) {
+      final score = getMoodScore(entry.value);
+      return FlSpot(entry.key.toDouble(), score);
     }).toList();
 
     return Container(
@@ -228,16 +245,33 @@ class _HistoryScreenState extends State<HistoryScreen> {
             child: LineChart(
               LineChartData(
                 gridData: FlGridData(show: false),
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    tooltipBgColor: AppColors.primary.withOpacity(0.05),
+                    getTooltipItems: (spots) {
+                      return spots.map((spot) {
+                        final entry = last7Days[spot.x.toInt()];
+                        return LineTooltipItem(
+                          '${entry.mood}\nIntensity: ${entry.intensity}',
+                          GoogleFonts.poppins(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
+                ),
                 titlesData: FlTitlesData(
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 2,
-                      reservedSize: 30,
+                      showTitles: false,
                     ),
                   ),
                   bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
+                    sideTitles: SideTitles(
+                      showTitles: false,
+                    ),
                   ),
                   rightTitles: AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
@@ -250,7 +284,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 minX: 0,
                 maxX: (spots.length - 1).toDouble(),
                 minY: 0,
-                maxY: 10,
+                maxY: 15, // Maximum possible score (10 * 1.5)
                 lineBarsData: [
                   LineChartBarData(
                     spots: spots,
@@ -268,21 +302,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
             ),
           ),
-          SizedBox(height: Layout.spacing.m),
-          Text(
-            'Mood intensity (1-10)',
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
-          ),
         ],
       ),
     );
   }
 
   Widget _buildMoodStats() {
-    final moodData = _entries.map((e) => e).toList();
+    final moodData = _entriesByDate.values.expand((e) => e).toList();
 
     if (moodData.isEmpty) return const SizedBox.shrink();
 
@@ -320,7 +346,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildMostFrequentMood() {
-    final moodData = _entries.map((e) => e).toList();
+    final moodData = _entriesByDate.values.expand((e) => e).toList();
 
     if (moodData.isEmpty) return const SizedBox.shrink();
 
@@ -577,7 +603,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 onDaySelected: (selectedDay, focusedDay) {
                   setState(() {
                     _selectedDate = selectedDay;
-                    _filterEntries();
                   });
                 },
                 calendarFormat: CalendarFormat.month,
@@ -651,12 +676,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
             ),
           ),
-          if (_filteredEntries.isNotEmpty)
+          if (_filterEntries(_entriesByDate.values.expand((e) => e).toList())
+              .isNotEmpty)
             Padding(
               padding: EdgeInsets.fromLTRB(Layout.spacing.l, Layout.spacing.m,
                   Layout.spacing.l, Layout.spacing.l),
               child: Column(
-                children: _filteredEntries
+                children: _filterEntries(
+                        _entriesByDate.values.expand((e) => e).toList())
                     .map((entry) => _buildMoodEntryCard(entry))
                     .toList(),
               ),
@@ -685,54 +712,66 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return CupertinoPageScaffold(
       backgroundColor: AppColors.background,
       child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            _buildTabs(),
-            Expanded(
-              child: _activeTab == 'analytics'
-                  ? SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(height: Layout.spacing.l),
-                          _buildMoodTrend(),
-                          SizedBox(height: Layout.spacing.l),
-                          _buildMoodStats(),
-                          SizedBox(height: Layout.spacing.l),
-                          _buildMostFrequentMood(),
-                          Padding(
-                            padding: EdgeInsets.all(Layout.spacing.l),
-                            child: Text(
-                              'Recent Mood Entries',
-                              style: GoogleFonts.poppins(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
+        child: Consumer<FirebaseProvider>(
+          builder: (context, provider, child) {
+            if (provider.isLoading) {
+              return const Center(child: CupertinoActivityIndicator());
+            }
+
+            final entries = provider.moodEntries;
+            final filteredEntries = _filterEntries(entries);
+            _entriesByDate = _organizeEntriesByDate(entries);
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(),
+                _buildTabs(),
+                Expanded(
+                  child: _activeTab == 'analytics'
+                      ? SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(height: Layout.spacing.l),
+                              _buildMoodTrend(),
+                              SizedBox(height: Layout.spacing.l),
+                              _buildMoodStats(),
+                              SizedBox(height: Layout.spacing.l),
+                              _buildMostFrequentMood(),
+                              Padding(
+                                padding: EdgeInsets.all(Layout.spacing.l),
+                                child: Text(
+                                  'Recent Mood Entries',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
                               ),
-                            ),
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: Layout.spacing.l,
+                                ),
+                                child: ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: entries.length,
+                                  itemBuilder: (context, index) {
+                                    final entry = entries[index];
+                                    return _buildMoodEntryCard(entry);
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
-                          Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: Layout.spacing.l,
-                            ),
-                            child: ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: _entries.length,
-                              itemBuilder: (context, index) {
-                                final entry = _entries[index];
-                                return _buildMoodEntryCard(entry);
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : _buildCalendarView(),
-            ),
-          ],
+                        )
+                      : _buildCalendarView(),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

@@ -4,6 +4,8 @@ import 'package:mood_tracker_flutter/constants/colors.dart';
 import 'package:mood_tracker_flutter/constants/layout.dart';
 import 'package:mood_tracker_flutter/models/mood.dart';
 import 'package:mood_tracker_flutter/widgets/mood_selector.dart';
+import 'package:mood_tracker_flutter/providers/firebase_provider.dart';
+import 'package:provider/provider.dart';
 
 class ManualMoodInputScreen extends StatefulWidget {
   final String? initialMood;
@@ -23,15 +25,17 @@ class _ManualMoodInputScreenState extends State<ManualMoodInputScreen> {
   String? _selectedMood;
   List<String> _selectedFeelings = [];
   List<String> _selectedTags = [];
+  int _selectedIntensity = 5;
   final _noteController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _selectedMood = widget.initialMood;
+    _selectedIntensity = widget.initialIntensity;
   }
 
-  void _saveMoodEntry() {
+  void _saveMoodEntry() async {
     if (_selectedMood == null) return;
 
     final entry = MoodEntry(
@@ -40,10 +44,29 @@ class _ManualMoodInputScreenState extends State<ManualMoodInputScreen> {
       mood: _selectedMood!,
       feelings: _selectedFeelings,
       tags: _selectedTags,
-      intensity: widget.initialIntensity,
+      intensity: _selectedIntensity,
     );
 
-    Navigator.pop(context);
+    try {
+      await context.read<FirebaseProvider>().createMoodEntry(entry);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        showCupertinoDialog(
+          context: context,
+          builder: (context) => CupertinoAlertDialog(
+            title: Text('Error'),
+            content: Text('Failed to save mood entry. Please try again.'),
+            actions: [
+              CupertinoDialogAction(
+                child: Text('OK'),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -66,12 +89,13 @@ class _ManualMoodInputScreenState extends State<ManualMoodInputScreen> {
                     _selectedMood = mood;
                     _selectedFeelings = feelings;
                     _selectedTags = tags;
+                    _selectedIntensity = intensity;
                   });
                 },
                 initialMood: widget.initialMood,
-                initialFeelings: const [],
-                initialTags: const [],
-                initialIntensity: widget.initialIntensity,
+                initialFeelings: _selectedFeelings,
+                initialTags: _selectedTags,
+                initialIntensity: _selectedIntensity,
               ),
               SizedBox(height: Layout.spacing.xl),
               Text('Add a note',

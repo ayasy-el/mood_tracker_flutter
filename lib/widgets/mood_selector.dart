@@ -67,6 +67,7 @@ class _MoodSelectorState extends State<MoodSelector> {
           _selectedFeelings = List<String>.from(_selectedFeelings)
             ..add(feeling);
           _feelingsController.clear();
+          _handleMoodSelection();
         }
       });
     }
@@ -75,6 +76,7 @@ class _MoodSelectorState extends State<MoodSelector> {
   void _removeFeeling(String feeling) {
     setState(() {
       _selectedFeelings = List<String>.from(_selectedFeelings)..remove(feeling);
+      _handleMoodSelection();
     });
   }
 
@@ -85,6 +87,7 @@ class _MoodSelectorState extends State<MoodSelector> {
         if (!_selectedTags.contains(tag) && _selectedTags.length < 3) {
           _selectedTags = List<String>.from(_selectedTags)..add(tag);
           _tagsController.clear();
+          _handleMoodSelection();
         }
       });
     }
@@ -93,6 +96,7 @@ class _MoodSelectorState extends State<MoodSelector> {
   void _removeTag(String tag) {
     setState(() {
       _selectedTags = List<String>.from(_selectedTags)..remove(tag);
+      _handleMoodSelection();
     });
   }
 
@@ -453,8 +457,10 @@ class _MoodSelectorState extends State<MoodSelector> {
                 activeColor: _selectedMood != null
                     ? AppColors.getMoodColor(_selectedMood!)
                     : AppColors.primary,
-                onChanged: (value) =>
-                    setState(() => _intensity = value.round()),
+                onChanged: (value) => setState(() {
+                  _intensity = value.round();
+                  _handleMoodSelection();
+                }),
               ),
             ),
             Text(

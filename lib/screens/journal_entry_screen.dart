@@ -6,6 +6,8 @@ import 'package:mood_tracker_flutter/constants/moods.dart';
 import 'package:mood_tracker_flutter/models/mood.dart';
 import 'package:mood_tracker_flutter/utils/ollama_service.dart';
 import 'package:mood_tracker_flutter/utils/string_extensions.dart';
+import 'package:mood_tracker_flutter/providers/firebase_provider.dart';
+import 'package:provider/provider.dart';
 
 class JournalEntryScreen extends StatefulWidget {
   final MoodEntry? existingEntry;
@@ -55,7 +57,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
     super.dispose();
   }
 
-  void _saveEntry() {
+  void _saveEntry() async {
     if (_contentController.text.isEmpty) {
       showCupertinoDialog(
         context: context,
@@ -84,16 +86,128 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
       return;
     }
 
-    final entry = MoodEntry(
-      content: _contentController.text,
-      timestamp: DateTime.now(),
-      mood: _selectedMood,
-      feelings: _selectedFeelings,
-      intensity: _intensity,
-      tags: _selectedTags,
-    );
+    try {
+      final entry = MoodEntry(
+        id: widget.existingEntry?.id,
+        content: _contentController.text,
+        timestamp: widget.existingEntry?.timestamp ?? DateTime.now(),
+        mood: _selectedMood,
+        feelings: _selectedFeelings,
+        intensity: _intensity,
+        tags: _selectedTags,
+      );
 
-    Navigator.pop(context, entry);
+      if (_isEditing) {
+        await context
+            .read<FirebaseProvider>()
+            .updateMoodEntry(entry.id!, entry);
+      } else {
+        await context.read<FirebaseProvider>().createMoodEntry(entry);
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        showCupertinoDialog(
+          context: context,
+          builder: (context) => CupertinoAlertDialog(
+            title: Text(
+              'Error',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            content: Text(
+              'Failed to save entry. Please try again.',
+              style: GoogleFonts.poppins(),
+            ),
+            actions: [
+              CupertinoDialogAction(
+                child: Text(
+                  'OK',
+                  style: GoogleFonts.poppins(),
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
+  void _deleteEntry() {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: Text(
+          'Delete Entry',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to delete this entry?',
+          style: GoogleFonts.poppins(),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(),
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await context
+                    .read<FirebaseProvider>()
+                    .deleteMoodEntry(widget.existingEntry!.id!);
+                if (mounted) {
+                  Navigator.pop(context);
+                }
+              } catch (e) {
+                if (mounted) {
+                  showCupertinoDialog(
+                    context: context,
+                    builder: (context) => CupertinoAlertDialog(
+                      title: Text(
+                        'Error',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      content: Text(
+                        'Failed to delete entry. Please try again.',
+                        style: GoogleFonts.poppins(),
+                      ),
+                      actions: [
+                        CupertinoDialogAction(
+                          child: Text(
+                            'OK',
+                            style: GoogleFonts.poppins(),
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              }
+            },
+            child: Text(
+              'Delete',
+              style: GoogleFonts.poppins(),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _addFeeling() {
@@ -382,13 +496,14 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
               spacing: Layout.spacing.s,
               runSpacing: Layout.spacing.s,
               children: _selectedTags.map((tag) {
+                final color = AppColors.getMoodColor(_selectedMood);
                 return Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: Layout.spacing.m,
                     vertical: Layout.spacing.xs,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.textSecondary.withOpacity(0.1),
+                    color: color.withOpacity(0.1),
                     borderRadius:
                         BorderRadius.circular(Layout.borderRadius.small),
                   ),
@@ -399,7 +514,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                         '#$tag',
                         style: GoogleFonts.poppins(
                           fontSize: 14,
-                          color: AppColors.textSecondary,
+                          color: color,
                         ),
                       ),
                       SizedBox(width: Layout.spacing.xs),
@@ -408,7 +523,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                         onPressed: () => _removeTag(tag),
                         child: Icon(
                           CupertinoIcons.xmark_circle_fill,
-                          color: AppColors.textSecondary,
+                          color: color,
                           size: 18,
                         ),
                       ),
@@ -551,6 +666,16 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
           ),
           onPressed: _saveEntry,
         ),
+        leading: _isEditing
+            ? CupertinoButton(
+                padding: EdgeInsets.zero,
+                child: Icon(
+                  CupertinoIcons.delete,
+                  color: CupertinoColors.destructiveRed,
+                ),
+                onPressed: _deleteEntry,
+              )
+            : null,
       ),
       child: SafeArea(
         child: SingleChildScrollView(

@@ -4,8 +4,11 @@ import 'package:mood_tracker_flutter/constants/colors.dart';
 import 'package:mood_tracker_flutter/constants/layout.dart';
 import 'package:mood_tracker_flutter/models/mood.dart';
 import 'package:mood_tracker_flutter/screens/journal_entry_screen.dart';
-import 'package:mood_tracker_flutter/utils/mock_data.dart';
 import 'package:intl/intl.dart';
+import 'package:mood_tracker_flutter/providers/firebase_provider.dart';
+import 'package:provider/provider.dart';
+
+// !Todo: Get realtime data from firebase
 
 class JournalScreen extends StatefulWidget {
   const JournalScreen({super.key});
@@ -15,71 +18,37 @@ class JournalScreen extends StatefulWidget {
 }
 
 class _JournalScreenState extends State<JournalScreen> {
-  List<MoodEntry> _entries = [];
-  List<MoodEntry> _filteredEntries = [];
   DateTime _selectedDate = DateTime.now();
   bool _showCalendar = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadEntries();
-  }
-
-  void _loadEntries() {
-    setState(() {
-      _entries = generateMockEntries();
-      _filterEntries();
-    });
-  }
-
-  void _filterEntries() {
-    setState(() {
-      if (_showCalendar) {
-        _filteredEntries = _entries.where((entry) {
-          return entry.timestamp.year == _selectedDate.year &&
-              entry.timestamp.month == _selectedDate.month &&
-              entry.timestamp.day == _selectedDate.day;
-        }).toList();
-      } else {
-        _filteredEntries = List.from(_entries);
-      }
-    });
+  List<MoodEntry> _filterEntries(List<MoodEntry> entries) {
+    if (_showCalendar) {
+      return entries.where((entry) {
+        return entry.timestamp.year == _selectedDate.year &&
+            entry.timestamp.month == _selectedDate.month &&
+            entry.timestamp.day == _selectedDate.day;
+      }).toList();
+    } else {
+      return List.from(entries);
+    }
   }
 
   Future<void> _addEntry() async {
-    final result = await Navigator.push<MoodEntry>(
+    await Navigator.push(
       context,
       CupertinoPageRoute(
         builder: (context) => const JournalEntryScreen(),
       ),
     );
-
-    if (result != null) {
-      setState(() {
-        _entries.insert(0, result);
-        _filterEntries();
-      });
-    }
   }
 
   Future<void> _editEntry(MoodEntry entry) async {
-    final result = await Navigator.push<MoodEntry>(
+    await Navigator.push(
       context,
       CupertinoPageRoute(
         builder: (context) => JournalEntryScreen(existingEntry: entry),
       ),
     );
-
-    if (result != null) {
-      setState(() {
-        final index = _entries.indexOf(entry);
-        if (index != -1) {
-          _entries[index] = result;
-          _filterEntries();
-        }
-      });
-    }
   }
 
   void _deleteEntry(MoodEntry entry) {
@@ -106,12 +75,30 @@ class _JournalScreenState extends State<JournalScreen> {
           ),
           CupertinoDialogAction(
             isDestructiveAction: true,
-            onPressed: () {
-              setState(() {
-                _entries.remove(entry);
-                _filterEntries();
-              });
+            onPressed: () async {
               Navigator.pop(context);
+              try {
+                await context
+                    .read<FirebaseProvider>()
+                    .deleteMoodEntry(entry.id!);
+              } catch (e) {
+                if (mounted) {
+                  showCupertinoDialog(
+                    context: context,
+                    builder: (context) => CupertinoAlertDialog(
+                      title: Text('Error'),
+                      content:
+                          Text('Failed to delete entry. Please try again.'),
+                      actions: [
+                        CupertinoDialogAction(
+                          child: Text('OK'),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              }
             },
             child: Text(
               'Delete',
@@ -150,7 +137,6 @@ class _JournalScreenState extends State<JournalScreen> {
                     onPressed: () {
                       setState(() {
                         _showCalendar = !_showCalendar;
-                        _filterEntries();
                       });
                     },
                     child: Icon(
@@ -241,12 +227,12 @@ class _JournalScreenState extends State<JournalScreen> {
     );
   }
 
-  Widget _buildJournalList() {
+  Widget _buildJournalList(List<MoodEntry> entries) {
     return ListView.builder(
       padding: EdgeInsets.all(Layout.spacing.l),
-      itemCount: _filteredEntries.length,
+      itemCount: entries.length,
       itemBuilder: (context, index) {
-        final entry = _filteredEntries[index];
+        final entry = entries[index];
         final moodColor = AppColors.getMoodColor(entry.mood);
 
         return Container(
@@ -413,16 +399,26 @@ class _JournalScreenState extends State<JournalScreen> {
     return CupertinoPageScaffold(
       backgroundColor: AppColors.background,
       child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: _filteredEntries.isEmpty
-                  ? _buildEmptyState()
-                  : _buildJournalList(),
-            ),
-          ],
+        child: Consumer<FirebaseProvider>(
+          builder: (context, provider, child) {
+            if (provider.isLoading) {
+              return const Center(child: CupertinoActivityIndicator());
+            }
+
+            final filteredEntries = _filterEntries(provider.moodEntries);
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(),
+                Expanded(
+                  child: filteredEntries.isEmpty
+                      ? _buildEmptyState()
+                      : _buildJournalList(filteredEntries),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
